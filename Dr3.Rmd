@@ -1,0 +1,226 @@
+---
+title: "Dr.3"
+output: pdf_document
+params:
+  RA3: RA3
+  RA2: RA2
+  RA1: RA1
+  RA3H: RA3H
+  direct2: direct2
+  direct3: direct3
+  direct1: direct1
+  Hospital_1: Hospital_1
+  Hospital_2: Hospital_2
+  Hospital_1H: Hospital_1H
+  Hospital_2H: Hospital_2H
+---
+
+```{r libraries, include=FALSE, echo=FALSE}
+library(readr)
+library(tidyverse)
+library(lubridate)
+library(stringr)
+library(knitr)
+library(tibble)
+```
+
+
+```{r digits, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
+options(pillar.sigfig = 2)
+```
+
+```{r RAs, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
+# Detect skiped lines, Dr Name and RA Date
+RAs <- read_lines(params$RA3)
+skip_h <- which(str_detect(RAs, "\"Group Number\"")) - 1
+RA_h <- read_csv(params$RA3, skip = skip_h, col_names = FALSE, n_max = 10)
+Dr <- RA_h$X2[RA_h$X1 == "Payee"]
+ra_date <- dmy(RA_h$X2[RA_h$X1 == "Payment Date"])
+skip <- which(str_detect(RAs, "Accepted\\sClaims"))
+
+# Read CSV
+RAs <- read_csv(params$RA3, skip = skip, guess_max = 3000)
+
+# Clean RAs
+RAs <- RAs[is.na(RAs$`First Name`) == FALSE,]
+RAs <- RAs[!str_detect(RAs$NS, "NS"),]
+RAs <- RAs[!is.na(RAs$NS),]
+RAs$`Amt Paid`[is.na(RAs$`Amt Paid`)] <- 0
+RAs <- RAs %>% mutate(
+  `Amt Paid` = str_remove(RAs$`Amt Paid`, pattern = "\\$"),
+  `Amt Submitted` = str_remove(RAs$`Amt Submitted`, pattern = "\\$"),
+  `Amt Paid` = as.numeric(paste(`Amt Paid`)),
+  `Amt Submitted` = as.numeric(paste(`Amt Submitted`)))
+# Clean Hospital_1 and Hospital_2 Claims
+
+# Read Hospital_1
+Hospital_1 <- read_csv(params$Hospital_1, skip = 2)
+
+# Transform Hospital_1
+Hospital_1 <- Hospital_1 %>% mutate("First Name" = First,
+                      "Last Name" = Last,
+                      "Amt Submitted" = Fee,
+                      "Service Date" = `S Date`)
+
+# Antijoin
+RAs <- anti_join(RAs, Hospital_1, by = c("First Name","Last Name","Amt Submitted","Service Date"))
+
+# Read Hospital_2
+Hospital_2 <- read_csv(params$Hospital_2, skip = 2)
+
+# Transform Hospital_2
+Hospital_2 <- Hospital_2 %>% mutate("First Name" = First,
+                      "Last Name" = Last,
+                      "Amt Submitted" = Fee,
+                      "Service Date" = `S Date`)
+
+# Antijoin
+RAs <- anti_join(RAs, Hospital_2, by = c("First Name","Last Name","Amt Submitted","Service Date"))
+
+# Clean RAs
+RAs <- RAs %>% select("Last Name",`OHIP Claim #`, `Service Code`,
+                      `Service Date`, NS, `Amt Submitted`,
+                      `Amt Paid`, `Expl Code`) %>%
+  mutate(`Service Date` = dmy(`Service Date`),
+         Type = ifelse(RAs$`Service Code` == "G432A" |
+                       RAs$`Service Code` =="G858A", "OHIP.VF",
+                       "OHIP.Clinic"))
+```
+
+# `r paste(Dr,"'S" ," remittance file paid by OHIP on ", ra_date, sep = "")`
+
+```{r direct, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
+direct <- read_csv(params$direct3, skip = 2)
+direct <- direct[str_detect(direct$DR, "Dr3"),]
+direct <- direct[,c("PID", "Serv Code", "Paid", "S Date", "NS")]
+
+direct <- direct %>% 
+  mutate(S.Date = dmy(`S Date`), 
+         Type = ifelse(direct$`Serv Code` == "G432A" |
+                       direct$`Serv Code` == "G858A" |
+                       direct$`Serv Code` == "VF","Direct.VF",
+                       ifelse(str_detect(direct$`Serv Code`,
+                                pattern = "TORIC|CHALAZION|MISSED"),
+                             "Direct.Dr3", ifelse(str_detect(direct$`Serv Code`,
+                                pattern = "^MED"), "Meds",
+                             "Direct.Clinic")))) %>%
+  filter(month(S.Date) == month(ra_date %m-% months(1)))
+
+direct$Paid[is.na(direct$Paid)] <- 0
+direct$`S Date` <- NULL
+```
+
+```{r sums, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
+
+`OHIP Clinic` <- RAs %>% dplyr::filter(Type == "OHIP.Clinic")  %>%
+  summarize("OHIP.Clinic" = sum(`Amt Paid`))
+`OHIP VF` <- RAs %>% dplyr::filter(Type == "OHIP.VF") %>%
+  summarize("OHIP.VF" = sum(`Amt Paid`))
+`Direct Clinic` <- direct %>% dplyr::filter(Type == "Direct.Clinic") %>%
+  summarize("Direct.Clinic" = sum(Paid))
+`Direct VF` <- direct %>% dplyr::filter(Type == "Direct.VF") %>%
+  summarize("Direct.VF" = sum(Paid))
+`Direct Dr3` <- direct %>% dplyr::filter(Type == "Direct.Dr3") %>% 
+  summarize("Direct.Dr3" = sum(Paid))
+
+
+
+RAs$Diff <- RAs$`Amt Submitted` - RAs$`Amt Paid`
+
+Unpaid <- RAs[RAs$`Amt Paid` == 0,] %>% group_by(`Service Code`) %>%
+  summarise(`Number of Claims` = n(),
+            Unpaid = sum(`Amt Submitted`)) %>%
+  arrange(desc(Unpaid))
+
+RAs$Diff <- RAs$`Amt Submitted` - RAs$`Amt Paid`
+
+`Partially Paid` <- RAs[RAs$Diff > 0 & RAs$`Amt Paid` != 0,] %>%
+  group_by(`Service Code`) %>%
+  summarise(`Number of Claims` = n(), Submitted = sum(`Amt Submitted`),
+            Paid = sum(`Amt Paid`), Unpaid = sum(Diff)) %>%
+  arrange(desc(Unpaid))
+
+unpt <- sum(Unpaid$Unpaid)
+punpt <- sum(`Partially Paid`$Unpaid)
+```
+
+# Totals
+```{r Total, echo=FALSE}
+kable(tibble(`OHIP Clinic`, `OHIP VF`, `Direct Clinic`, `Direct VF`, `Direct Dr3`))
+kable(tibble("Payable to SB" = "(0.35 * OHIP Clinic) + (0.5 * OHIP VF) - (0.65 * Direct Clinic) - (0.5 * Direct VF) - (Direct Dr3)"))
+kable(tibble("Payable to SB" = 
+               round((0.35 * `OHIP Clinic`) + (0.5 * `OHIP VF`) -
+                       (0.65 * `Direct Clinic`) - (0.5 * `Direct VF`) - (`Direct Dr3`), digits = 2)))
+```
+
+# Unpaid Claims
+`r paste("Total unpaid =", round(unpt, digits = 2))`
+
+```{r Unpaid, echo=FALSE}
+kable(Unpaid)
+```
+
+\newpage
+
+# Partially Paid Claims
+`r paste("Total unpaid =", round(punpt, digits = 2))`
+```{r PUnpaid, echo=FALSE}
+kable(`Partially Paid`)
+```
+
+# OHIP
+
+```{r ohip sums, echo=FALSE}
+RAs$Diff <- NULL
+RAs$`Expl Code` <- NULL
+
+kable(RAs %>% group_by(Type) %>% summarize(sum = sum(`Amt Paid`)))
+```
+
+## Payment per code
+```{r OHIP Total by code, warnings = FALSE, echo=FALSE}
+# Summary
+kable(RAs %>% group_by(`Service Code`) %>% 
+        summarize("Number of services" = n(),
+                  "Total" = sum(`Amt Paid`)) %>%
+      arrange(desc(Total)))
+
+```
+
+## Payment per date
+```{r OHIP Total by date, warnings = FALSE, echo=FALSE}
+kable(RAs %>% 
+        group_by(`Service Date`) %>% 
+        summarize("Weekday" = weekdays(unique(`Service Date`)),
+                  "Number of services" = n(),
+                  "Total" = sum(`Amt Paid`)))
+#kable(arrange(RAs, `Service Date`))    
+```
+
+\newpage
+
+# Direct
+```{r direct sums, echo=FALSE}
+#kable(arrange(direct, Type))
+kable(direct %>% group_by(Type) %>% summarize(sum = sum(Paid)))
+
+```
+
+## Payment per code
+```{r Direct Total by code, warnings = FALSE, echo=FALSE}
+kable(direct %>% group_by(`Serv Code`) %>% 
+        summarize("Number of services" = n(),
+                  "Total" = sum(Paid)) %>%
+      arrange(desc(Total)))
+```
+
+## Payment per date
+```{r Direct Total by date, warnings = FALSE, echo=FALSE}
+kable(direct %>% group_by(S.Date) %>% 
+        summarize("Weekday" = weekdays(unique(S.Date)),
+                  "Number of services" = n(),
+                  "Total" = sum(Paid)))
+```
+
+
+

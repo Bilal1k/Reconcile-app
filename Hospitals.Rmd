@@ -1,0 +1,257 @@
+---
+title: "Hospitals"
+output: pdf_document
+params:
+  RA3: RA3
+  RA2: RA2
+  RA1: RA1
+  RA3H: RA3H
+  direct2: direct2
+  direct3: direct3
+  direct1: direct1
+  Hospital_1: Hospital_1
+  Hospital_2: Hospital_2
+  Hospital_1H: Hospital_1H
+  Hospital_2H: Hospital_2H
+---
+
+```{r libraries, include=FALSE, echo=FALSE}
+library(readr)
+library(tidyverse)
+library(lubridate)
+library(stringr)
+library(knitr)
+library(tibble)
+```
+
+
+
+```{r digits, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
+options(pillar.sigfig = 2)
+```
+
+```{r Hospital_1, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
+# read Hospital_1 Claims
+
+Hospital_1 <- read_csv(params$Hospital_1H, skip = 2)
+
+# Transform Hospital_1
+
+Hospital_1 <- Hospital_1 %>% mutate("First Name" = First,
+                      "Last Name" = Last,
+                      "Amt Submitted" = Fee,
+                      "Service Date" = `S Date`)
+
+
+# Detect skiped lines, Dr Name and RA Date
+RAs <- read_lines(params$RAZB)
+skip_h <- which(str_detect(RAs, "\"Group Number\"")) - 1
+RA_h <- read_csv(params$RAZB, skip = skip_h, col_names = FALSE, n_max = 10)
+Dr <- RA_h$X2[RA_h$X1 == "Payee"]
+ra_date <- dmy(RA_h$X2[RA_h$X1 == "Payment Date"])
+skip <- which(str_detect(RAs, "Accepted\\sClaims"))
+
+# Read CSV
+RAs <- read_csv(params$RAZB, skip = skip, guess_max = 3000)
+
+# Clean RAs
+RAs <- RAs[is.na(RAs$`First Name`) == FALSE,]
+RAs <- RAs[!str_detect(RAs$NS, "NS"),]
+RAs <- RAs[!is.na(RAs$NS),]
+RAs$`Amt Paid`[is.na(RAs$`Amt Paid`)] <- 0
+
+RAs <- RAs %>% mutate(
+  `Amt Paid` = str_remove(RAs$`Amt Paid`, pattern = "\\$"),
+  `Amt Submitted` = str_remove(RAs$`Amt Submitted`, pattern = "\\$"),
+  `Amt Paid` = as.numeric(paste(`Amt Paid`)),
+  `Amt Submitted` = as.numeric(paste(`Amt Submitted`)))
+
+
+# Semi join
+RAs <- semi_join(RAs, Hospital_1 , by = c("First Name","Last Name","Amt Submitted","Service Date"))
+
+# Clean RAs
+RAs <- RAs %>% select(`Last Name`, `Service Code`,
+                      `Service Date`, NS, `Amt Submitted`,
+                      `Amt Paid`) %>%
+  mutate(`Service Date` = dmy(`Service Date`),
+         Type = ifelse(RAs$`Service Code` == "G432A" |
+                       RAs$`Service Code` =="G858A", "OHIP.VF",
+                       "OHIP.Clinic"))
+
+# Total
+Total <- RAs %>% summarize("Hospital_1 Total" = sum(`Amt Paid`))
+```
+
+
+```{r Rejeciotns_Hospital_1, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
+Unpaid <- RAs[RAs$`Amt Paid` == 0,] %>% group_by(`Service Code`) %>%
+  summarise(`Number of Claims` = n(),
+            Unpaid = sum(`Amt Submitted`)) %>%
+  arrange(desc(Unpaid))
+
+RAs$Diff <- RAs$`Amt Submitted` - RAs$`Amt Paid`
+
+`Partially Paid` <- RAs[RAs$Diff > 0 & RAs$`Amt Paid` != 0,] %>%
+  group_by(`Service Code`) %>%
+  summarise(`Number of Claims` = n(), Submitted = sum(`Amt Submitted`),
+            Paid = sum(`Amt Paid`), Unpaid = sum(Diff)) %>%
+  arrange(desc(Unpaid))
+
+unpt <- sum(Unpaid$Unpaid)
+punpt <- sum(`Partially Paid`$Unpaid)
+```
+
+# `r paste(Dr,"'S" ," remittance file paid by OHIP on ", ra_date, sep = "")`
+
+# Hospital_1 Claims
+
+`r paste("Hospital_1 Total = ",Total,"$")`
+\newline
+
+
+## Unpaid Claims
+`r paste("Total unpaid =", round(unpt, digits = 2))`
+
+```{r Unpaid_Hospital_1, echo=FALSE}
+kable(Unpaid)
+```
+
+## Partially Paid Claims
+`r paste("Total unpaid =", round(punpt, digits = 2))`
+```{r PUnpaid_Hospital_1, echo=FALSE}
+kable(`Partially Paid`)
+```
+
+## Payment per code
+
+```{r Hospital_1 Total by code, warnings = FALSE, echo=FALSE}
+# Summary
+kable(RAs %>% group_by(`Service Code`) %>% 
+        summarize("Number of services" = n(),
+                  "Total" = sum(`Amt Paid`)) %>%
+      arrange(desc(Total)))
+
+```
+
+## Payment per date
+```{r Hospital_1 Total by date, warnings = FALSE, echo=FALSE}
+kable(RAs %>% 
+        group_by(`Service Date`) %>% 
+        summarize("Weekday" = weekdays(unique(`Service Date`)),
+                  "Number of services" = n(),
+                  "Total" = sum(`Amt Paid`)))
+#kable(arrange(RAs, `Service Date`))    
+```
+
+\newpage
+# Hospital_2 Claims
+
+```{r Hospital_2, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
+# read Hospital_2 Claims
+
+Hospital_2 <- read_csv(params$Hospital_2H, skip = 2)
+
+# Transform Hospital_2
+
+Hospital_2 <- Hospital_2 %>% mutate("First Name" = First,
+                      "Last Name" = Last,
+                      "Amt Submitted" = Fee,
+                      "Service Date" = `S Date`)
+
+
+# Detect skiped lines, Dr Name and RA Date
+RAs <- read_lines(params$RAZB)
+skip_h <- which(str_detect(RAs, "\"Group Number\"")) - 1
+RA_h <- read_csv(params$RAZB, skip = skip_h, col_names = FALSE, n_max = 10)
+Dr <- RA_h$X2[RA_h$X1 == "Payee"]
+ra_date <- dmy(RA_h$X2[RA_h$X1 == "Payment Date"])
+skip <- which(str_detect(RAs, "Accepted\\sClaims"))
+
+# Read CSV
+RAs <- read_csv(params$RAZB, skip = skip, guess_max = 3000)
+
+# Clean RAs
+RAs <- RAs[is.na(RAs$`First Name`) == FALSE,]
+RAs <- RAs[!str_detect(RAs$NS, "NS"),]
+RAs <- RAs[!is.na(RAs$NS),]
+RAs$`Amt Paid`[is.na(RAs$`Amt Paid`)] <- 0
+RAs <- RAs %>% mutate(
+  `Amt Paid` = str_remove(RAs$`Amt Paid`, pattern = "\\$"),
+  `Amt Submitted` = str_remove(RAs$`Amt Submitted`, pattern = "\\$"),
+  `Amt Paid` = as.numeric(paste(`Amt Paid`)),
+  `Amt Submitted` = as.numeric(paste(`Amt Submitted`)))
+
+
+# Semi join
+RAs <- semi_join(RAs, Hospital_2 , by = c("First Name","Last Name","Amt Submitted","Service Date"))
+
+# Clean RAs
+RAs <- RAs %>% select(`Last Name`, `Service Code`,
+                      `Service Date`, NS, `Amt Submitted`,
+                      `Amt Paid`) %>%
+  mutate(`Service Date` = dmy(`Service Date`),
+         Type = ifelse(RAs$`Service Code` == "G432A" |
+                       RAs$`Service Code` =="G858A", "OHIP.VF",
+                       "OHIP.Clinic"))
+
+# Total
+Total <- RAs %>% summarize("Hospital_2 Total" = sum(`Amt Paid`))
+```
+
+```{r Rejeciotns_Hospital_2, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
+Unpaid <- RAs[RAs$`Amt Paid` == 0,] %>% group_by(`Service Code`) %>%
+  summarise(`Number of Claims` = n(),
+            Unpaid = sum(`Amt Submitted`)) %>%
+  arrange(desc(Unpaid))
+
+RAs$Diff <- RAs$`Amt Submitted` - RAs$`Amt Paid`
+
+`Partially Paid` <- RAs[RAs$Diff > 0 & RAs$`Amt Paid` != 0,] %>%
+  group_by(`Service Code`) %>%
+  summarise(`Number of Claims` = n(), Submitted = sum(`Amt Submitted`),
+            Paid = sum(`Amt Paid`), Unpaid = sum(Diff)) %>%
+  arrange(desc(Unpaid))
+
+unpt <- sum(Unpaid$Unpaid)
+punpt <- sum(`Partially Paid`$Unpaid)
+```
+
+`r paste("Hospital_2 Total = ",Total,"$")`
+\newline
+
+## Unpaid Claims
+`r paste("Total unpaid =", round(unpt, digits = 2))`
+
+```{r Unpaid_Hospital_2, echo=FALSE}
+kable(Unpaid)
+```
+
+## Partially Paid Claims
+`r paste("Total unpaid =", round(punpt, digits = 2))`
+```{r PUnpaid_Hospital_2, echo=FALSE}
+kable(`Partially Paid`)
+```
+
+## Payment per code
+```{r Hospital_2 Total by code, warnings = FALSE, echo=FALSE}
+# Summary
+kable(RAs %>% group_by(`Service Code`) %>% 
+        summarize("Number of services" = n(),
+                  "Total" = sum(`Amt Paid`)) %>%
+      arrange(desc(Total)))
+
+
+```
+
+## Payment per date
+```{r Hospital_2 Total by date, warnings = FALSE, echo=FALSE}
+kable(RAs %>% 
+        group_by(`Service Date`) %>% 
+        summarize("Weekday" = weekdays(unique(`Service Date`)),
+                  "Number of services" = n(),
+                  "Total" = sum(`Amt Paid`)))
+#kable(arrange(RAs, `Service Date`))    
+```
+
+
