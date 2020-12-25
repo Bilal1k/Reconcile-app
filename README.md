@@ -2,7 +2,7 @@
 OHIP Billing reconciliation app
 
 This R Shiny applicaiton was developed to automate billing reconciliation calculations and generate reports.
-It takes OHIP "Ontario Health Insurance Plan" Remmitance advice files and Hype Med csv reports "for private billing and location tags" and generates a report that inculdes monthly payments per Doctor and some aggregated data for analtical porposes.
+It takes OHIP "Ontario Health Insurance Plan" Remmitance advice files and Hype Med csv reports "for private billing and location tags" and generates a report that inculdes monthly payments per Doctor and some aggregated data for analytical purposes.
 Creating those reports was done manually using Excel before this app was developed. It was a time consuming task that was prone to human error.
 This app "with some modifications" can be used by most private medical professionals in Ontario, Canada. 
 
