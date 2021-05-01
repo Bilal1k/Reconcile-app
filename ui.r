@@ -1,5 +1,3 @@
-if (!require("shiny")) install.packages("shiny")
-
 shinyUI(
     fluidPage(
         selectInput("doctor", "Report Type:",

@@ -1,6 +1,3 @@
-if (!require("shiny")) install.packages("shiny")
-
-
 shinyServer(function(input, output) {
   Dr <- eventReactive(input$update, {
     switch(input$doctor,
