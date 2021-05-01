@@ -8,7 +8,7 @@ import datetime as dt
 
 
 # Read OHIP Remmitance file
-path = 'C:\\Users\\Bilal\\Documents\\Projects\\Shiny 3.1\\ZB_Jan.csv'
+path = 'path RA'
 txt = open(path, 'r')
 txtr = txt.read()
 txt.close()
@@ -58,7 +58,7 @@ RAs['Weekday'] = RAs['Service Date'].dt.day_name()
 # Read Hospital Claims
 
 # H1
-path_H1 = 'C:\\Users\\Bilal\\Documents\\Projects\\Shiny 3.1\\SJH_Jan.csv'
+path_H1 = 'path SJH'
 txt_H1 = open(path_H1, 'r')
 txtr_H1 = txt_H1.read()
 txt_H1.close()
@@ -81,7 +81,7 @@ ind = (RAs['HCN'].isin(H1['Hcn']) & RAs['Service_Date'].isin(H1['S_Date']) & RAs
 RAs = RAs[ind == False]
 
 # H2
-path_H2 = 'C:\\Users\\Bilal\\Documents\\Projects\\Shiny 3.1\\TWH_Jan.csv'
+path_H2 = 'path TWH'
 txt_H2 = open(path_H2, 'r')
 txtr_H2 = txt_H2.read()
 txt_H2.close()
@@ -106,7 +106,7 @@ RAs = RAs[['First_Name', 'Last_Name', 'Service_Code', 'Service_Date', 'NS',
      'Amt_Submitted', 'Amt_Paid', 'Expl_Code','Weekday','Type']]
 
 # Import Direct
-path_Direct = 'C:\\Users\\Bilal\\Documents\\Projects\\Shiny 3.1\\Direct_Jan.csv'
+path_Direct = 'path Direct'
 txt_Direct = open(path_Direct, 'r')
 txtr_Direct = txt_Direct.read()
 txt_Direct.close()
