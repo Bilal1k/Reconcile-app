@@ -4,7 +4,8 @@ shinyUI(
                     choices = c("Dr.1",
                                 "Dr.2",
                                 "Dr.3",
-                                "Hospitals")),
+                                "Hospitals"),
+                    selected = "Dr.1"),
         
         conditionalPanel(
             condition = "input.doctor == 'Dr.1'",
