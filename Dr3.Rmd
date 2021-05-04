@@ -147,8 +147,8 @@ punpt <- sum(`Partially Paid`$Unpaid)
 # Totals
 ```{r Total, echo=FALSE}
 kable(tibble(`OHIP Clinic`, `OHIP VF`, `Direct Clinic`, `Direct VF`, `Direct Dr3`))
-kable(tibble("Payable to SB" = "(0.35 * OHIP Clinic) + (0.5 * OHIP VF) - (0.65 * Direct Clinic) - (0.5 * Direct VF) - (Direct Dr3)"))
-kable(tibble("Payable to SB" = 
+kable(tibble("Payable" = "(0.35 * OHIP Clinic) + (0.5 * OHIP VF) - (0.65 * Direct Clinic) - (0.5 * Direct VF) - (Direct Dr3)"))
+kable(tibble("Payable" = 
                round((0.35 * `OHIP Clinic`) + (0.5 * `OHIP VF`) -
                        (0.65 * `Direct Clinic`) - (0.5 * `Direct VF`) - (`Direct Dr3`), digits = 2)))
 ```
