@@ -4,7 +4,7 @@ shinyUI(
                     choices = c("Dr.1",
                                 "Dr.2",
                                 "Dr.3",
-                                "Hospital 1 and Hospital 2 Claims")),
+                                "Hospitals")),
         
         conditionalPanel(
             condition = "input.doctor == 'Dr.1'",
@@ -17,7 +17,7 @@ shinyUI(
             fileInput("direct2", "Direct Claims", multiple = FALSE, accept = ".csv")),
         
         
-        # Dr.3 is using the office's billing software to bill hopital Pt. These entrie need to be calculated seperatly.
+        # Dr.3 is using the office's billing software to bill hospital Pt. This need to be calculated separately.
         
         conditionalPanel(
             condition = "input.doctor == 'Dr.3'",
