@@ -2,17 +2,9 @@
 title: "Dr.2"
 output: pdf_document
 params:
-  RA3: RA3
-  RA2: RA2
-  RA1: RA1
-  RA3H: RA3H
-  direct2: direct2
-  direct3: direct3
-  direct1: direct1
-  Hospital_1: Hospital_1
-  Hospital_2: Hospital_2
-  Hospital_1H: Hospital_1H
-  Hospital_2H: Hospital_2H
+  RA: RA
+  direct: direct
+
 ---
 
 ```{r libraries, include=FALSE, echo=FALSE}
@@ -32,15 +24,15 @@ options(pillar.sigfig = 2)
 
 ```{r RAs, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
 # Detect skiped lines, Dr Name and RA Date
-RAs <- read_lines(params$Dr.2)
+RAs <- read_lines(params$RA)
 skip_h <- which(str_detect(RAs, "\"Group Number\"")) - 1
-RA_h <- read_csv(params$Dr.2, skip = skip_h, col_names = FALSE, n_max = 10)
+RA_h <- read_csv(params$RA, skip = skip_h, col_names = FALSE, n_max = 10)
 Dr <- RA_h$X2[RA_h$X1 == "Payee"]
 ra_date <- dmy(RA_h$X2[RA_h$X1 == "Payment Date"])
 skip <- which(str_detect(RAs, "Accepted\\sClaims"))
 
 # Read CSV
-RAs <- read_csv(params$Dr.2, skip = skip, guess_max = 3000)
+RAs <- read_csv(params$RA, skip = skip, guess_max = 3000)
 
 # Clean CSV
 RAs <- RAs[is.na(RAs$`First Name`) == FALSE,]
@@ -73,10 +65,10 @@ RAs <- RAs[is.na(RAs$`Service Code`) == FALSE,]
 # `r paste(Dr,"'S" ," remittance file paid by OHIP on ", ra_date, sep = "")`
 
 ```{r direct, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
-direct <- read_csv(params$direct2, skip = 2)
+direct <- read_csv(params$direct, skip = 2)
 
 # Clean, filter and stratify direct billing file 
-direct <- direct[str_detect(direct$DR, "Dr.2"),]
+direct <- direct[str_detect(direct$RA, "Dr.2"),]
 direct <- direct[,c("PID", "Serv Code", "Paid", "S Date", "NS")]
 
 direct <- direct %>% 

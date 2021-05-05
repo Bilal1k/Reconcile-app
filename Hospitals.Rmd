@@ -2,17 +2,10 @@
 title: "Hospitals"
 output: pdf_document
 params:
-  RA3: RA3
-  RA2: RA2
-  RA1: RA1
-  RA3H: RA3H
-  direct2: direct2
-  direct3: direct3
-  direct1: direct1
+  RA: RA
   Hospital_1: Hospital_1
   Hospital_2: Hospital_2
-  Hospital_1H: Hospital_1H
-  Hospital_2H: Hospital_2H
+
 ---
 
 ```{r libraries, include=FALSE, echo=FALSE}
@@ -33,7 +26,7 @@ options(pillar.sigfig = 2)
 ```{r Hospital_1, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
 # read Hospital_1 Claims
 
-Hospital_1 <- read_csv(params$Hospital_1H, skip = 2)
+Hospital_1 <- read_csv(params$Hospital_1, skip = 2)
 
 # Transform Hospital_1
 
@@ -44,15 +37,15 @@ Hospital_1 <- Hospital_1 %>% mutate("First Name" = First,
 
 
 # Detect skiped lines, Dr Name and RA Date
-RAs <- read_lines(params$RA3H)
+RAs <- read_lines(params$RA)
 skip_h <- which(str_detect(RAs, "\"Group Number\"")) - 1
-RA_h <- read_csv(params$RAZB, skip = skip_h, col_names = FALSE, n_max = 10)
+RA_h <- read_csv(params$RA, skip = skip_h, col_names = FALSE, n_max = 10)
 Dr <- RA_h$X2[RA_h$X1 == "Payee"]
 ra_date <- dmy(RA_h$X2[RA_h$X1 == "Payment Date"])
 skip <- which(str_detect(RAs, "Accepted\\sClaims"))
 
 # Read CSV
-RAs <- read_csv(params$RA3H, skip = skip, guess_max = 3000)
+RAs <- read_csv(params$RA, skip = skip, guess_max = 3000)
 
 # Clean RAs
 RAs <- RAs[is.na(RAs$`First Name`) == FALSE,]
@@ -150,7 +143,7 @@ kable(RAs %>%
 ```{r Hospital_2, messages =FALSE, include=FALSE, warnings = FALSE, echo=FALSE}
 # read Hospital_2 Claims
 
-Hospital_2 <- read_csv(params$Hospital_2H, skip = 2)
+Hospital_2 <- read_csv(params$Hospital_2, skip = 2)
 
 # Transform Hospital_2
 
@@ -161,15 +154,15 @@ Hospital_2 <- Hospital_2 %>% mutate("First Name" = First,
 
 
 # Detect skiped lines, Dr Name and RA Date
-RAs <- read_lines(params$RA3H)
+RAs <- read_lines(params$RA)
 skip_h <- which(str_detect(RAs, "\"Group Number\"")) - 1
-RA_h <- read_csv(params$RAZB, skip = skip_h, col_names = FALSE, n_max = 10)
+RA_h <- read_csv(params$RA, skip = skip_h, col_names = FALSE, n_max = 10)
 Dr <- RA_h$X2[RA_h$X1 == "Payee"]
 ra_date <- dmy(RA_h$X2[RA_h$X1 == "Payment Date"])
 skip <- which(str_detect(RAs, "Accepted\\sClaims"))
 
 # Read CSV
-RAs <- read_csv(params$RA3H, skip = skip, guess_max = 3000)
+RAs <- read_csv(params$RA, skip = skip, guess_max = 3000)
 
 # Clean RAs
 RAs <- RAs[is.na(RAs$`First Name`) == FALSE,]
